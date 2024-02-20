@@ -1,0 +1,260 @@
+MONGOOSE JS
+- its a schema based model
+- MONGOOSE creates object reference for interacting with the mongodb
+example of code.
+    var BookSchema = new Schema({
+        title:String,
+        published: {
+            type: Date,
+            default: Date now
+        },
+        keywords: Array,
+        published: Boolean
+    })
+
+
+HOW TO USE MONGOOSE
+var mongoose = require('mongoose);
+var Schema = mongoose.Schema;
+var BookSchema = new Schema({
+    title: String,
+    keywords: Array,
+    published: Boolean
+})
+
+Instanciation of mongooses
+module.exports = mongoose.model('book', BookSchema);
+
+connections
+var myDB = 'mongodb://localhost/dbName';
+
+mongoose.connect(myDB);
+
+SCHEMA DESIGN
+model - basis of a databse arch
+
+creating schema
+
+var BookSchema = new Schema({
+    title:String,
+    title: {
+        type: String,
+        require: true,
+        unique: true
+    }
+    published: {
+        type: Date,
+        default: Date.now
+    },
+    keywords: Array,
+    published: Boolean,
+    author: {
+        type: Schema.Objectld,
+        ref: "User"
+    },
+    // adding embedded docs
+    detail: {
+        modelNumber: Number,
+        hardcover: Boolean,
+        reviews: Number,
+        rank: Number
+    }
+
+})
+
+
+subdocuments - are documents embedded in other documents
+            - this means you can nest schemas in others schemas
+
+
+// Two distinct notion of subdocuments are:
+   - array of subdocuments
+   - single nested documents
+
+   const childSchema = new Schema({name: "string});
+
+   const parentSchema = ({
+    // Array of subdocuments
+
+      children: [childSchema]
+
+    //  Single documents
+      child: childSchema
+   })
+
+   //NOTES:
+
+     populated documents are not subdocuments in Mongoose
+     Subdocument data is embedded in the top-level document.
+     Referenced documents are separate top-level documents.
+
+     const childSchema = new Schema({ name: 'string' });
+     const Child = mongoose.model('Child', childSchema);
+
+     const parentSchema = new Schema({
+     child: {
+    type: mongoose.ObjectId,
+    ref: 'Child'
+     }
+         });
+     const Parent = mongoose.model('Parent', parentSchema);
+
+     const doc = await Parent.findOne().populate('child');
+// NOT a subdocument. `doc.child` is a separate top-level document.
+doc.child;
+
+Subdocuments are similar to normal documents. Nested schemas can have middleware, custom validation logic, virtuals, and any other feature top-level schemas can use. The major difference is that subdocuments are not saved individually, they are saved whenever their top-level parent document is saved.
+
+const Parent = mongoose.model('Parent', parentSchema);
+const parent = new Parent({ children: [{ name: 'Matt' }, { name: 'Sarah' }] });
+parent.children[0].name = 'Matthew';
+
+// `parent.children[0].save()` is a no-op, it triggers middleware but
+// does **not** actually save the subdocument. You need to save the parent
+// doc.
+await parent.save();
+
+
+Subdocuments have save and validate middleware just like top-level documents. Calling save() on the parent document triggers the save() middleware for all its subdocuments, and the same for validate() middleware.
+
+childSchema.pre('save', function(next) {
+  if ('invalid' == this.name) {
+    return next(new Error('#sadpanda'));
+  }
+  next();
+});
+
+const parent = new Parent({ children: [{ name: 'invalid' }] });
+try {
+  await parent.save();
+} catch (err) {
+  err.message; // '#sadpanda'
+}
+
+Subdocuments' pre('save') and pre('validate') middleware execute before the top-level document's pre('save') but after the top-level document's pre('validate') middleware. This is because validating before save() is actually a piece of built-in middleware.
+
+
+// Below code will print out 1-4 in order
+const childSchema = new mongoose.Schema({ name: 'string' });
+
+childSchema.pre('validate', function(next) {
+  console.log('2');
+  next();
+});
+
+childSchema.pre('save', function(next) {
+  console.log('3');
+  next();
+});
+
+const parentSchema = new mongoose.Schema({
+  child: childSchema
+});
+
+parentSchema.pre('validate', function(next) {
+  console.log('1');
+  next();
+});
+
+parentSchema.pre('save', function(next) {
+  console.log('4');
+  next();
+});
+
+SUBDOCUMENTS VERSUS NESTED PATHS
+
+In Mongoose, nested paths are subtly different from subdocuments. For example, below are two schemas: one with child as a subdocument, and one with child as a nested path.
+
+// Subdocument
+const subdocumentSchema = new mongoose.Schema({
+  child: new mongoose.Schema({ name: String, age: Number })
+});
+const Subdoc = mongoose.model('Subdoc', subdocumentSchema);
+
+// Nested path
+const nestedSchema = new mongoose.Schema({
+  child: { name: String, age: Number }
+});
+const Nested = mongoose.model('Nested', nestedSchema);
+
+First, instances of Nested never have child === undefined. You can always set subproperties of child, even if you don't set the child property. But instances of Subdoc can have child === undefined.
+
+const doc1 = new Subdoc({});
+doc1.child === undefined; // true
+doc1.child.name = 'test'; // Throws TypeError: cannot read property...
+
+const doc2 = new Nested({});
+doc2.child === undefined; // false
+console.log(doc2.child); // Prints 'MongooseDocument { undefined }'
+doc2.child.name = 'test'; // Works
+
+
+
+SUBDOCUMENTS DEFAULTS
+Subdocument paths are undefined by default, and Mongoose does not apply subdocument defaults unless you set the subdocument path to a non-nullish value.
+
+const subdocumentSchema = new mongoose.Schema({
+  child: new mongoose.Schema({
+    name: String,
+    age: {
+      type: Number,
+      default: 0
+    }
+  })
+});
+const Subdoc = mongoose.model('Subdoc', subdocumentSchema);
+
+// Note that the `age` default has no effect, because `child`
+// is `undefined`.
+const doc = new Subdoc();
+doc.child; // undefined
+
+However, if you set doc.child to any object, Mongoose will apply the age default if necessary.
+
+doc.child = {};
+// Mongoose applies the `age` default:
+doc.child.age; // 0
+
+Mongoose applies defaults recursively, which means there's a nice workaround if you want to make sure Mongoose applies subdocument defaults: make the subdocument path default to an empty object.
+
+const childSchema = new mongoose.Schema({
+  name: String,
+  age: {
+    type: Number,
+    default: 0
+  }
+});
+const subdocumentSchema = new mongoose.Schema({
+  child: {
+    type: childSchema,
+    default: () => ({})
+  }
+});
+const Subdoc = mongoose.model('Subdoc', subdocumentSchema);
+
+// Note that Mongoose sets `age` to its default value 0, because
+// `child` defaults to an empty object and Mongoose applies
+// defaults to that empty object.
+const doc = new Subdoc();
+doc.child; // { age: 0 }
+
+
+Finding a Subdocument
+Each subdocument has an _id by default. Mongoose document arrays have a special id method for searching a document array to find a document with a given _id.
+
+const doc = parent.children.id(_id);
+
+Adding Subdocs to Arrays
+MongooseArray methods such as push, unshift, addToSet, and others cast arguments to their proper types transparently:
+
+const Parent = mongoose.model('Parent');
+const parent = new Parent();
+
+// create a comment
+parent.children.push({ name: 'Liesl' });
+const subdoc = parent.children[0];
+console.log(subdoc); // { _id: '501d86090d371bab2c0341c5', name: 'Liesl' }
+subdoc.isNew; // true
+
+await parent.save();
+console.log('Success!');
