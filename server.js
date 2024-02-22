@@ -70,12 +70,27 @@ app.put("/books/:id", async (req, res) => {
     );
 
     res.status(204).json({ success: true, data: newUpdate });
+    console.log(newUpdate);
   } catch (err) {
     res.status(500).json({ success: false, msg: `An Error Occurred ${err}` });
   }
 });
 
+// delete request
 
+app.delete("/books/:id", async (req, res) => {
+  try {
+    const _id = req.params.id;
+    const deletedBook = await Book.findOneAndDelete({ _id });
+    res
+      .status(201)
+      .json({ success: true, msg: `The book has been deleted successfully` });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ success: false, msg: `An Error occured, Error: ${err}` });
+  }
+});
 
 
 const port = process.env.PORT || 8080
