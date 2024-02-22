@@ -12,15 +12,17 @@ mongoose.connect(db);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.get("/", (req, res) => {
-  res.send("<h1>Hello John Doe</h1>");
+  return res.send("<h1>Hello John Doe</h1>");
 });
 
 app.get("/books", async (req, res) => {
   try {
     const result = await Book.find({}).exec();
-    res.status(200).json({ success: true, msg: result });
+    return res.status(200).json({ success: true, msg: result });
   } catch (err) {
-    res.status(500).json({ success: false, msg: `An Error occurred ${err}` });
+    return res
+      .status(500)
+      .json({ success: false, msg: `An Error occurred ${err}` });
   }
 });
 
@@ -28,9 +30,11 @@ app.get("/books/:id", async (req, res) => {
   try {
     const id = req.params.id;
     const result = await Book.findOne({ _id: id }).exec();
-    res.status(200).json({ success: true, msg: result });
+    return res.status(200).json({ success: true, msg: result });
   } catch (err) {
-    res.status(500).json({ success: false, msg: `An Error occured ${err}` });
+    return res
+      .status(500)
+      .json({ success: false, msg: `An Error occured ${err}` });
   }
 });
 
@@ -52,9 +56,11 @@ app.get("/books/:id", async (req, res) => {
 app.post("/books", async (req, res) => {
   try {
     const result = await Book.create(req.body);
-    res.status(200).json({ success: true, msg: result });
+    return res.status(200).json({ success: true, msg: result });
   } catch (err) {
-    res.status(500).json({ success: false, msg: `An error occured ${err}` });
+    return res
+      .status(500)
+      .json({ success: false, msg: `An error occured ${err}` });
   }
 });
 
@@ -69,10 +75,12 @@ app.put("/books/:id", async (req, res) => {
       { upsert: true }
     );
 
-    res.status(204).json({ success: true, data: newUpdate });
+    return res.status(204).json({ success: true, data: newUpdate });
     console.log(newUpdate);
   } catch (err) {
-    res.status(500).json({ success: false, msg: `An Error Occurred ${err}` });
+    return res
+      .status(500)
+      .json({ success: false, msg: `An Error Occurred ${err}` });
   }
 });
 
@@ -82,11 +90,11 @@ app.delete("/books/:id", async (req, res) => {
   try {
     const _id = req.params.id;
     const deletedBook = await Book.findOneAndDelete({ _id });
-    res
+    return res
       .status(201)
       .json({ success: true, msg: `The book has been deleted successfully` });
   } catch (err) {
-    res
+    return res
       .status(500)
       .json({ success: false, msg: `An Error occured, Error: ${err}` });
   }
