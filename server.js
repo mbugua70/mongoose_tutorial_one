@@ -4,8 +4,11 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const Book = require("./book.model");
 
-const db =
-  "mongodb+srv://myAtlasDBUser:123455@myatlasclusteredu.kmyoknr.mongodb.net/Bookmongoose?retryWrites=true&w=majority";
+// enviroment variable
+
+require("dotenv").config();
+
+const db = process.env.MONGODB_URL_STRING;
 
 mongoose.connect(db);
 
